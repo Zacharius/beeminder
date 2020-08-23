@@ -16,4 +16,5 @@ def auto_incrementer(dry_run=True):
 
 
 if __name__ == "__main__":
-    auto_incrementer(False)
+    auto_incrementer()
+
