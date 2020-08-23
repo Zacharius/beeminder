@@ -1,5 +1,8 @@
 from goal import Goal
 from vars import GOALS
+from notion_integration import sync_goal_table
+
+import sys
 
 #return array of goal objects from locally stored array of goal dicts
 def intake_goals():
