@@ -1,6 +1,6 @@
-A place for experiments and scripts with the beeminder api.
+**A place for experiments and scripts with the beeminder api.**
 
-Auto Incrementer
+# Auto Incrementer
 
 A script to auto increment beeminder goals if they meet several criteria
 
