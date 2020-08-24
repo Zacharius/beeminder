@@ -1,6 +1,7 @@
 A place for experiments and scripts with the beeminder api.
 
 Auto Incrementer
+
 A script to auto increment beeminder goals if they meet several criteria
 
 To run it you would first put your username, token, and a list of goals in a file called vars.py. A file called vars.example.py exists to give you an example of the form it should have.
