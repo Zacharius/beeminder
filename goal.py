@@ -145,9 +145,9 @@ def beeminder_api_call(call_str, payload=None):
         resp = requests.get(url)
 
     if resp.status_code != 200:
-        print(f"Error Code: {resp.status_code}")
-        print(f"Error Text: {resp.text}")
-        print(f"Request : {url}")
+        print("Error Code: %s" % resp.status_code)
+        print("Error Text: %s" % resp.text)
+        print("Request : %s" % url)
 
     return resp.json()
 
