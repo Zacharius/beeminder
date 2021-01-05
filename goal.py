@@ -23,10 +23,10 @@ class Goal:
 
         if not hasattr(self, "buffer_threshold"):
             self.buffer_threshold = 3
-        if not hasattr(self, "rate_limit"):
-            self.rate_limit = None
+        if not hasattr(self, "goal_rate"):
+            self.goal_rate = None
         if not hasattr(self, "step_rate"):
-            self.rate_limit = None
+            self.step_rate = None
 
 
     @staticmethod
@@ -40,47 +40,51 @@ class Goal:
 
     def __get_params_from_notion(self):
         self.step_rate = self.notion_row.step_rate
-        self.rate_limit = self.notion_row.rate_limit
+        self.goal_rate = self.notion_row.goal_rate
         self.buffer_threshold = self.notion_row.buffer_threshold
 
 
     def cur_rate(self):
 
-        if self.runits == 'y':
-            period = 365
-        elif self.runits == 'm':
-            period = 30
-        elif self.runits == 'w':
-            period = 7
+        if self.goal_type in ["hustler", "drinker"]:
+
+            if self.runits == 'y':
+                period = 365
+            elif self.runits == 'm':
+                period = 30
+            elif self.runits == 'w':
+                period = 7
+            else:
+                return None
+
+            def get_past_timestamp(delta_days):
+                now = datetime.datetime.utcnow()
+                time = now - datetime.timedelta(days=delta_days)
+                return int(time.strftime('%Y%m%d'))
+
+            cutoff = get_past_timestamp(period)
+
+            sum = 0
+
+            for point in self.datapoints:
+                timestamp = int(point["daystamp"])
+                if timestamp < cutoff:
+                    return sum
+                sum += point['value']
+            return sum
         else:
-            return None
-
-        def get_past_timestamp(delta_days):
-            now = datetime.datetime.utcnow()
-            time = now - datetime.timedelta(days=delta_days)
-            return int(time.strftime('%Y%m%d'))
-
-        cutoff = get_past_timestamp(period)
-
-        sum = 0
-
-        for point in self.datapoints:
-            timestamp = int(point["daystamp"])
-            if timestamp < cutoff:
-                return sum
-            sum += point['value']
-        return sum
+            return 0
 
     # Decides whether goal can increment based on actual rate vs rate limit
     # returns boolean
     def can_increment(self):
-        if not self.rate_limit:
+        if not self.goal_rate:
             return False
 
         if self.goal_type == 'hustler':
-            return self.rate < self.rate_limit
+            return self.rate < self.goal_rate
         elif self.goal_type == 'drinker':
-            return self.rate > self.rate_limit
+            return self.rate > self.goal_rate
 
     # decides whether buffer is in a safe state
     # returns boolean
@@ -92,6 +96,9 @@ class Goal:
 
     # decides whether rate over last period is greater than set rate
     def safe_rate(self):
+        if not self.goal_type in ["hustler", "drinker"]:
+           return True
+
         cur_rate = self.cur_rate()
         if self.goal_type == "hustler":
             return cur_rate >= self.rate
@@ -106,7 +113,7 @@ class Goal:
 
     def increment_rate(self, dry_run=True):
         new_rate = self.rate + self.step_rate
-        if (self.goal_type == "hustler" and new_rate > self.rate_limit) or (self.goal_type == "drinker" and new_rate < self.rate_limit):
+        if (self.goal_type == "hustler" and new_rate > self.goal_rate) or (self.goal_type == "drinker" and new_rate < self.goal_rate):
             new_rate = self.rate_limi
 
 
@@ -119,7 +126,7 @@ class Goal:
                 "auth_token": TOKEN,
                 "roadall": json.dumps(self.roadall)
             }
-            beeminder_api_call("/goals/" + self.name + ".json", payload=payload)
+            beeminder_api_call("/goals/" + self.slug + ".json", payload=payload)
 
         return new_rate
 

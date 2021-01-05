@@ -1,17 +1,21 @@
-from goal import Goal
-from vars import GOALS
-from goal import get_all_goals
+from goal import Goal, get_all_goals
+from notion_integration import get_collection
 
 
 def auto_increment(dry_run=True):
-    for goal in get_all_goals():
+    collection = get_collection()
+    for goal in get_all_goals(collection):
         if goal.safe_to_increment():
-            print("incrementing goal %s from %s to %s a %s" % (goal.name, goal.rate, goal.rate+goal.step_rate, goal.runits))
+            print("incrementing goal %s from %s to %s a %s" % (goal.slug, goal.rate, goal.rate+goal.step_rate, goal.runits))
             goal.increment_rate(dry_run=dry_run)
         else:
             print("goal %s not safe to increment" % goal.slug)
+            print(goal.safe_type())
+            print(goal.can_increment())
+            print(goal.safe_buffer())
+            print(goal.safe_rate())
 
 
 if __name__ == "__main__":
-    auto_increment(False)
+    auto_increment(True)
 
