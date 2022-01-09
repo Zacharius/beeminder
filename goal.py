@@ -2,8 +2,7 @@ import datetime
 import json
 import requests
 
-from vars import TOKEN, USERNAME
-from notion_integration import get_or_create_row, get_collection
+from vars import BEEMINDER_TOKEN, USERNAME
 
 URL = "https://www.beeminder.com/api/v1/"
 
@@ -11,6 +10,7 @@ URL = "https://www.beeminder.com/api/v1/"
 class Goal:
 
     def __init__(self, goal_dict=None, notion_db=None):
+        self.goal_type = None
         self.__dict__ = goal_dict
         if not hasattr(self, "datapoints"):
             self.__dict__.update(self.__load_data_from_api())
@@ -18,7 +18,6 @@ class Goal:
         self.datapoints = self.datapoints[::-1]
 
         if notion_db:
-            self.notion_row = get_or_create_row(notion_db, self.slug)
             self.__get_params_from_notion()
 
         if not hasattr(self, "buffer_threshold"):
@@ -31,11 +30,11 @@ class Goal:
 
     @staticmethod
     def get_user_goals_names():
-        goal_list = beeminder_api_call("/goals.json?auth_token=" + TOKEN)
+        goal_list = beeminder_api_call("/goals.json?auth_token=" + BEEMINDER_TOKEN)
         return goal_list
 
     def __load_data_from_api(self):
-        data = beeminder_api_call("/goals/" + self.slug + ".json?auth_token=" + TOKEN + "&datapoints=true")
+        data = beeminder_api_call("/goals/" + self.slug + ".json?auth_token=" + BEEMINDER_TOKEN + "&datapoints=true")
         return data
 
     def __get_params_from_notion(self):
@@ -123,7 +122,7 @@ class Goal:
             self.roadall[-1][0] = old_rate_end_date
             self.roadall.append([new_rate_end_date, None, new_rate])
             payload = {
-                "auth_token": TOKEN,
+                "auth_token": BEEMINDER_TOKEN,
                 "roadall": json.dumps(self.roadall)
             }
             beeminder_api_call("/goals/" + self.slug + ".json", payload=payload)
@@ -159,17 +158,13 @@ def beeminder_api_call(call_str, payload=None):
     return resp.json()
 
 
-def get_all_goals(collection=None):
+def get_all_goals():
 
-    goals = beeminder_api_call("/goals.json?auth_token=" + TOKEN + "&datapoints=true")
-    if collection:
-        return [Goal(goal_dict=goal, notion_db=collection) for goal in goals]
-    else:
-        return [Goal(goal_dict=goal) for goal in goals]
+    goals = beeminder_api_call("/goals.json?auth_token=" + BEEMINDER_TOKEN + "&datapoints=true")
+    return [Goal(goal_dict=goal) for goal in goals]
 
 
 if __name__ == '__main__':
-    collection = get_collection()
-    goals = get_all_goals(collection)
+    goals = get_all_goals()
     for goal in goals:
         goal.sync_notion_to_beeminder()

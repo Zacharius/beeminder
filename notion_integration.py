@@ -1,52 +1,80 @@
-from notion.client import NotionClient
+import json
 
-from vars import GOALS, NOTION_TOKEN, NOTION_CV_URL
-#from goal import Goal, get_all_goals
-#from auto_incrementer import intake_goals
+from notion_client import Client
 
-class Goal_Table():
+from vars import NOTION_TOKEN, HABIT_TABLE_ID
+from goal import get_all_goals
 
-    def __init__(self):
-        client = NotionClient(token_v2=NOTION_TOKEN)
-        self.rows = client.get_collection_view(NOTION_CV_URL).collection.get_rows()
+notion = Client(auth=NOTION_TOKEN)
 
-def get_collection():
-    client = NotionClient(token_v2=NOTION_TOKEN)
 
-    return client.get_collection_view(NOTION_CV_URL).collection
+def sync_habit_table():
+    # bee_2_notion_props ={
+    #     "runits": "period",
+    #     "rate": "set_rate",
+    #     "name": "slug",
+    #     "buffer_days": "safebuf",
+    #     "goal_type": "goal_type"
+    # }
 
-def sync_goal_table(goals, client=None):
-    bee_2_notion_props ={
-        "runits": "period",
-        "rate": "set_rate",
-        "name": "slug",
-        "buffer_days": "safebuf",
-        "goal_type": "goal_type"
-    }
+    def insert_select(val):
+        return {
+            "select": {
+                "name": val
+            }
+        }
 
-    if not client:
-        client = NotionClient(token_v2=NOTION_TOKEN)
+    def insert_text(val):
+        return {
+            "rich_text": [
+                {
+                    "type": "text",
+                    "text": {
+                        "content": val
+                    }
+                }
+            ]
+        }
 
-    collection = client.get_collection_view(NOTION_CV_URL).collection
+    def insert_num(val):
+        return {
+            "number": val
+        }
+
+    def insert_checkbox(val):
+        return {
+            "checkbox": val
+        }
+
+    # collection = client.get_collection_view(NOTION_CV_URL).collection
+    goals = get_all_goals()
     for goal in goals:
-        notion_row = get_or_create_row(collection, goal.slug)
+        filter = {
+            "property": "Name",
+            "text": {"equals": goal.slug}
+        }
 
-        #for props in bee_2_notion_props.keys():
-        #    notion_row[bee_2_notion_props[]]
-        if notion_row:
-            safe = (goal.safe_buffer() or goal.entered_data_today()) and bool(goal.safebuf)
-            notion_row.safe = safe
-            notion_row.buffer_days = str(goal.safebuf)
-            notion_row.frequency = str(round(goal.cur_rate(), 1)) + "/" + str(goal.runits)
-            notion_row.rate = str(goal.rate) + "/" + str(goal.runits)
+        # notion_row = get_or_create_row(collection, goal.slug)
 
+        res = notion.databases.query(database_id=HABIT_TABLE_ID, filter=filter)
+        if len(res["results"]) != 1:
+            print(f"{goal.slug} Failed")
+            continue
 
-def get_or_create_row(collection, goal_title):
-    for row in collection.get_rows():
-        if row.title.lower() == goal_title:
-            return row
+        page_id = res["results"][0]["id"]
 
-    row = collection.add_row()
-    row.name = goal_title
+        goal_rate = str(goal.rate) + "/" + str(goal.runits)
+        actual_rate = str(round(goal.cur_rate(), 1)) + "/" + str(goal.runits)
+        safe = (goal.safe_buffer() or goal.entered_data_today()) and bool(goal.safebuf)
+        update_payload = {
+            "period": insert_select(goal.runits),
+            "actual_rate": insert_text(actual_rate),
+            "safe": insert_checkbox(safe),
+            "buffer_days": insert_num(goal.safebuf),
+            "goal_rate": insert_text(goal_rate)
+
+        }
+        notion.pages.update(page_id=page_id, properties=update_payload)
+        print(f"{goal.slug} Succeeded")
 
 
